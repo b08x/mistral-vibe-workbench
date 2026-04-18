@@ -40,9 +40,13 @@ Identify and catalog all system prompt requirements.`
   }
 
   if (phase === 'drafting') {
+    const skeletonPrompt = workspace.generation.skeletonConstraints 
+      ? `\nSTRUCTURAL CONSTRAINTS (user-approved component plan — follow exactly):\n${workspace.generation.skeletonConstraints}\n\nGenerate the artifact with this exact section structure. Do not add, remove, or reorder sections.\n`
+      : '';
+
     return {
       system: `You are generating a custom mistral-vibe system prompt during the DRAFTING phase.
-
+${skeletonPrompt}
 PURPOSE: Synthesize identity and expertise into a professional, first-person identity document.
 
 ${dimensionDirectives}

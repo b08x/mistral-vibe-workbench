@@ -66,6 +66,21 @@ export class GenerationOrchestrator {
 
     // 2. PHASE: DRAFTING
     this.workspace.generation.currentPhase = 'drafting';
+    
+    // Inject component preview constraints if approved
+    const approvedPreview = this.workspace.artifacts.componentPreview;
+    if (approvedPreview?.userApproved) {
+      const sectionConstraints = approvedPreview.sections
+        .sort((a, b) => a.order - b.order)
+        .map(s => {
+          const note = s.userNotes ? ` [User note: ${s.userNotes}]` : '';
+          return `${s.label}: ${s.description}${note}`;
+        })
+        .join('\n');
+      
+      this.workspace.generation.skeletonConstraints = sectionConstraints;
+    }
+
     const draftingPrompt = this.getPrompt('drafting');
     const draftResult = await runPhase('drafting', draftingPrompt);
     this.workspace.generation.draftArtifact = draftResult.content;

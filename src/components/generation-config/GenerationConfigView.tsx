@@ -60,7 +60,7 @@ export const GenerationConfigView: React.FC = () => {
   }, [validProviders.length]);
 
   const startGeneration = () => {
-    updateWorkspace({ meta: { ...workspace.meta, status: 'generating' } });
+    updateWorkspace({ meta: { ...workspace.meta, status: 'component-preview' } });
   };
 
   const goBack = () => {
@@ -250,7 +250,7 @@ export const GenerationConfigView: React.FC = () => {
           onClick={startGeneration}
           className="h-12 px-10"
         >
-          <Zap className="w-4 h-4 mr-2" /> BEGIN_GENERATION_SEQUENCE
+          <Zap className="w-4 h-4 mr-2" /> PREVIEW_COMPONENT_PLAN
         </Button>
       </div>
     </div>

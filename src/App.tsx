@@ -13,6 +13,7 @@ import { GenerationView } from './components/generation/GenerationView';
 import { PreviewView } from './components/preview/PreviewView';
 import { SettingsPanel } from './components/settings/SettingsPanel';
 import { GenerationConfigView } from './components/generation-config';
+import { ComponentPreviewView } from './components/component-preview';
 import { Settings, LogOut, Home, Box, Zap, FileText } from 'lucide-react';
 import { Button } from './components/ui';
 import { cn } from './lib/utils';
@@ -33,6 +34,8 @@ const AppContent: React.FC = () => {
         return <ReviewView />;
       case 'generation-config':
         return <GenerationConfigView />;
+      case 'component-preview':
+        return <ComponentPreviewView />;
       case 'generating':
         return <GenerationView />;
       case 'complete':

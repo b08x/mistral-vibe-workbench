@@ -23,7 +23,7 @@ export interface VibeWorkspace {
 export interface WorkspaceMeta {
   entityType: 'agent' | 'skill' | 'system-prompt' | 'tool';
   outputFormat: 'toml' | 'markdown' | 'yaml';
-  status: 'entity-selection' | 'questions' | 'review' | 'generation-config' | 'generating' | 'complete' | 'error';
+  status: 'entity-selection' | 'questions' | 'review' | 'generation-config' | 'component-preview' | 'generating' | 'complete' | 'error';
   currentSection: string | null;
   currentQuestion: string | null;
   questionsAnswered: number;
@@ -55,6 +55,7 @@ export interface ArtifactState {
   provider: string | null;
   tokensUsed: number | null;
   generationTime: number | null;
+  componentPreview?: ComponentPreview;
   phase_models_used?: {
     context_gathering: PhaseModelConfig
     drafting: PhaseModelConfig
@@ -108,6 +109,7 @@ export interface GenerationState {
   contextMap: Record<string, any> | null;
   draftArtifact: string | null;
   generationTime: number;
+  skeletonConstraints?: string;
 }
 
 export interface GenerationPrompt {
@@ -129,6 +131,38 @@ export interface InterventionRecord {
   intervention: string;
   result: string;
   timestamp: Date;
+}
+
+/**
+ * A single editable section/component in the artifact skeleton.
+ */
+export interface PreviewSection {
+  id: string;                   // stable uuid, used as React key and edit target
+  label: string;                // display name: e.g. "## Identity & Role"
+  description: string;          // brief description of what this section will contain
+  dimensionHints: {            // which UGCS dimensions apply to this section
+    abstraction?: string;       // e.g. "low", "moderate"
+    imagery?: string;
+    intensity?: string;
+  };
+  editable: boolean;            // false for sections the LLM flags as structurally required
+  order: number;                // current render order (user can reorder)
+  userNotes?: string;           // freeform user annotation injected as context
+}
+
+/**
+ * The full skeleton preview of the artifact to be generated.
+ * Produced by a lightweight pre-generation LLM call.
+ * Stored in workspace.artifacts.componentPreview.
+ */
+export interface ComponentPreview {
+  entityType: string;
+  outputFormat: string;         // 'toml' | 'md'
+  sections: PreviewSection[];
+  dimensionSummary: string;     // short plain-English summary of UGCS register choices
+  estimatedTokens: number;      // rough estimate for user transparency
+  generatedAt: Date;
+  userApproved: boolean;        // set to true when user clicks "Proceed to Generation"
 }
 
 export interface ValidationState {

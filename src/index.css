@@ -48,6 +48,10 @@
   box-shadow: 0 0 20px rgba(255, 90, 31, 0.1);
 }
 
+.glow-shadow-hover:hover {
+  box-shadow: 0 0 30px rgba(255, 90, 31, 0.2);
+}
+
 .orange-gradient {
   background: linear-gradient(135deg, var(--color-mistral-orange), var(--color-mistral-amber));
 }

@@ -26,7 +26,7 @@ const INITIAL_META: WorkspaceMeta = {
   generatedAt: null
 };
 
-const INITIAL_WORKSPACE: VibeWorkspace = {
+export const INITIAL_WORKSPACE: VibeWorkspace = {
   meta: INITIAL_META,
   session: {
     answers: {},
@@ -52,7 +52,16 @@ const INITIAL_WORKSPACE: VibeWorkspace = {
     draftArtifact: null,
     generationTime: 0
   },
-  validation: null
+  validation: null,
+  workbench_settings: {
+    phase_models: {
+      context_gathering: { provider: 'mistral', model: 'mistral-small-latest', temperature: 0.1 },
+      drafting:          { provider: 'mistral', model: 'mistral-large-latest', temperature: 0.4 },
+      review:            { provider: 'mistral', model: 'mistral-small-latest', temperature: 0.1 }
+    },
+    available_models: {},
+    key_status: {}
+  }
 };
 
 export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -61,8 +70,31 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   useEffect(() => {
     const loaded = WorkspaceManager.load();
+    const savedModelSettings = WorkspaceManager.loadModelSettings();
+
     if (loaded) {
-      setWorkspace(loaded);
+      const merged = {
+        ...INITIAL_WORKSPACE,
+        ...loaded,
+        meta: { ...INITIAL_WORKSPACE.meta, ...loaded.meta },
+        workbench_settings: {
+          ...INITIAL_WORKSPACE.workbench_settings,
+          ...(loaded.workbench_settings || {}),
+          ...(savedModelSettings ? { phase_models: savedModelSettings.phase_models } : {}),
+          // Always reset runtime state on load
+          available_models: {},
+          key_status: {}
+        }
+      };
+      setWorkspace(merged);
+    } else if (savedModelSettings) {
+      setWorkspace({
+        ...INITIAL_WORKSPACE,
+        workbench_settings: {
+          ...INITIAL_WORKSPACE.workbench_settings,
+          phase_models: savedModelSettings.phase_models
+        }
+      });
     }
     setIsReady(true);
   }, []);

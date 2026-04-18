@@ -1,4 +1,4 @@
-import { VibeWorkspace } from '../../types';
+import { VibeWorkspace, WorkbenchModelSettings } from '../../types';
 
 const STORAGE_KEY = 'vibe_workspace_state';
 const API_KEYS_KEY = 'vibe_api_keys';
@@ -53,6 +53,35 @@ export class WorkspaceManager {
 
   static clearAPIKeys() {
       sessionStorage.removeItem(API_KEYS_KEY);
+  }
+
+  static saveModelSettings(settings: WorkbenchModelSettings): void {
+    const toSave = { phase_models: settings.phase_models };
+    localStorage.setItem('vibe_model_settings', JSON.stringify(toSave));
+  }
+
+  static loadModelSettings(): { phase_models: WorkbenchModelSettings['phase_models'] } | null {
+    const raw = localStorage.getItem('vibe_model_settings');
+    if (!raw) return null;
+    try { return JSON.parse(raw); } catch { return null; }
+  }
+
+  static getAllAPIKeys(): Record<string, string> {
+    // If we're using the single-key approach:
+    return this.getAPIKeys();
+    
+    /* 
+    // If we were using the multi-key approach from the prompt:
+    const keys: Record<string, string> = {}
+    for (let i = 0; i < sessionStorage.length; i++) {
+      const k = sessionStorage.key(i)
+      if (k?.startsWith('vibe_api_key_')) {
+        const providerId = k.replace('vibe_api_key_', '')
+        keys[providerId] = sessionStorage.getItem(k) || ''
+      }
+    }
+    return keys 
+    */
   }
 
   static exportAsJSON(workspace: VibeWorkspace): string {

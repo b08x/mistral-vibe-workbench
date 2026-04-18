@@ -1,18 +1,39 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, Button, Input, Select, Alert, AlertTitle, AlertDescription } from '../ui';
 import { WorkspaceManager } from '../../lib/storage/workspace-manager';
-import { Key, ShieldAlert, Save, Trash2, CheckCircle2 } from 'lucide-react';
+import { Key, ShieldAlert, Save, Trash2, CheckCircle2, RefreshCw } from 'lucide-react';
 import { ProviderRegistry } from '../../lib/providers/registry';
+import { useModelValidation } from '../../hooks/useModelValidation';
 
 export const SettingsPanel: React.FC = () => {
   const [keys, setKeys] = useState<Record<string, string>>({});
   const [saved, setSaved] = useState(false);
   const registry = ProviderRegistry.getInstance();
   const providers = registry.list();
+  const { validateKey, keyStatus } = useModelValidation();
 
   useEffect(() => {
-    setKeys(WorkspaceManager.getAPIKeys() as Record<string, string>);
+    const loadedKeys = WorkspaceManager.getAPIKeys() as Record<string, string>;
+    setKeys(loadedKeys);
+    
+    // Auto-validate configured keys on load
+    Object.entries(loadedKeys).forEach(([id, key]) => {
+      if (key && key.length > 5) {
+        validateKey(id, key);
+      }
+    });
   }, []);
+
+  const getStatusLabel = (providerId: string) => {
+    const status = keyStatus[providerId] ?? 'unset';
+    if (keys[providerId] && status === 'unset') return { label: 'Configured', color: 'text-amber-500' };
+    switch (status) {
+      case 'validating': return { label: 'Checking...', color: 'text-blue-400' };
+      case 'valid':      return { label: 'Valid ✓',     color: 'text-emerald-500' };
+      case 'invalid':    return { label: 'Invalid Key', color: 'text-red-500' };
+      default:           return { label: 'Missing',     color: 'text-amber-500' };
+    }
+  };
 
   const handleSave = () => {
     Object.entries(keys).forEach(([provider, key]) => {
@@ -51,8 +72,8 @@ export const SettingsPanel: React.FC = () => {
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-bold uppercase tracking-wider flex items-center justify-between">
                 <span>{provider.name} {provider.supportsDirectBrowser && <span className="ml-2 px-1.5 py-0.5 rounded bg-emerald-500 text-white text-[10px]">CORS SAFE</span>}</span>
-                <span className={keys[provider.id] ? "text-emerald-500" : "text-amber-500"}>
-                  {keys[provider.id] ? "Configured" : "Missing"}
+                <span className={getStatusLabel(provider.id).color}>
+                  {getStatusLabel(provider.id).label}
                 </span>
               </CardTitle>
             </CardHeader>
@@ -62,9 +83,25 @@ export const SettingsPanel: React.FC = () => {
                   type="password"
                   value={keys[provider.id] || ''}
                   onChange={(e) => setKeys({ ...keys, [provider.id]: e.target.value })}
+                  onBlur={() => {
+                    if (keys[provider.id] && keys[provider.id].length > 10) {
+                      WorkspaceManager.saveAPIKey(provider.id, keys[provider.id]);
+                      validateKey(provider.id, keys[provider.id]);
+                    }
+                  }}
                   placeholder={`Enter ${provider.name} API Key`}
                   className="font-mono text-sm h-10"
                 />
+                {keyStatus[provider.id] === 'valid' && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => validateKey(provider.id, keys[provider.id])}
+                    className="shrink-0 h-10"
+                  >
+                    <RefreshCw className="w-3 h-3 mr-1" /> Refresh Models
+                  </Button>
+                )}
               </div>
             </CardContent>
           </Card>

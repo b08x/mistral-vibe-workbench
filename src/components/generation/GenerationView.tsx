@@ -31,24 +31,7 @@ export const GenerationView: React.FC = () => {
     const startGen = async () => {
       if (workspace.meta.status !== 'generating') return;
 
-      const modelProviderId = workspace.session.answers.model_provider || 'mistral';
-      const modelId = workspace.session.answers.model_name || 'mistral-large-latest';
-      const apiKey = WorkspaceManager.getAPIKey(modelProviderId);
-
-      if (!apiKey) {
-        setError(`Please configure your API key for ${modelProviderId} in the settings menu before generating.`);
-        return;
-      }
-
-      const registry = ProviderRegistry.getInstance();
-      const provider = registry.get(modelProviderId);
-
-      if (!provider) {
-        setError(`Provider ${modelProviderId} not found in registry.`);
-        return;
-      }
-
-      const orchestrator = new GenerationOrchestrator(workspace, provider, apiKey, modelId);
+      const orchestrator = new GenerationOrchestrator(workspace);
       
       try {
         // Simple phase simulation for UI feedback

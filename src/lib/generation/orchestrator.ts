@@ -1,12 +1,14 @@
 import { 
   VibeWorkspace, 
   GenerationResult,
-  ComplianceStatus
+  ComplianceStatus,
+  PhaseModelConfig
 } from '../../types';
 import { 
   ProviderRegistry, 
   ModelProvider 
 } from '../providers/registry';
+import { WorkspaceManager } from '../storage/workspace-manager';
 import { 
   UGCSController 
 } from './ugcs-controller';
@@ -22,54 +24,65 @@ import {
 
 export class GenerationOrchestrator {
   private workspace: VibeWorkspace;
-  private provider: ModelProvider;
-  private apiKey: string;
-  private model: string;
+  private apiKeys: Record<string, string>;
   private controller: UGCSController;
+  private registry = ProviderRegistry.getInstance();
 
-  constructor(workspace: VibeWorkspace, provider: ModelProvider, apiKey: string, model: string) {
+  constructor(workspace: VibeWorkspace) {
     this.workspace = workspace;
-    this.provider = provider;
-    this.apiKey = apiKey;
-    this.model = model;
+    this.apiKeys = WorkspaceManager.getAllAPIKeys();
     this.controller = new UGCSController(workspace.meta.entityType);
   }
 
   async generate(): Promise<VibeWorkspace> {
     const delay = (ms: number) => new Promise(r => setTimeout(r, ms));
+    const { phase_models } = this.workspace.workbench_settings;
+
+    // Helper for per-phase generation
+    const runPhase = async (phase: keyof VibeWorkspace['workbench_settings']['phase_models'], prompt: any) => {
+      const config = phase_models[phase];
+      const provider = this.registry.get(config.provider);
+      const apiKey = this.apiKeys[config.provider];
+      
+      if (!provider || !apiKey) {
+        throw new Error(`Missing provider or API key for phase: ${phase} (Provider: ${config.provider})`);
+      }
+
+      return provider.generate(prompt, config.model, apiKey, { temperature: config.temperature });
+    };
 
     // 1. PHASE: CONTEXT_GATHERING
     this.workspace.generation.currentPhase = 'context_gathering';
     const contextGatheringPrompt = this.getPrompt('context_gathering');
-    const contextResult = await this.provider.generate(contextGatheringPrompt, this.model, this.apiKey);
+    const contextResult = await runPhase('context_gathering', contextGatheringPrompt);
     
     try {
       this.workspace.generation.contextMap = JSON.parse(contextResult.content);
     } catch (e) {
-      // Heuristic fallback: if not JSON, store as raw
       this.workspace.generation.contextMap = { raw: contextResult.content };
     }
 
-    await delay(1000); // 1s cooldown between phases
+    await delay(1000);
 
     // 2. PHASE: DRAFTING
     this.workspace.generation.currentPhase = 'drafting';
     const draftingPrompt = this.getPrompt('drafting');
-    const draftResult = await this.provider.generate(draftingPrompt, this.model, this.apiKey);
+    const draftResult = await runPhase('drafting', draftingPrompt);
     this.workspace.generation.draftArtifact = draftResult.content;
 
-    await delay(1000); // 1s cooldown between phases
+    await delay(1000);
 
     // 3. PHASE: REVIEW
     this.workspace.generation.currentPhase = 'review';
     const reviewPrompt = this.getPrompt('review', draftResult.content);
-    const finalResult = await this.provider.generate(reviewPrompt, this.model, this.apiKey);
+    const finalResult = await runPhase('review', reviewPrompt);
     
     // Finalize workspace
     this.workspace.artifacts.generatedContent = finalResult.content;
-    this.workspace.artifacts.model = this.model;
-    this.workspace.artifacts.provider = this.provider.id;
-    this.workspace.artifacts.tokensUsed = finalResult.tokens_used; // approximate
+    this.workspace.artifacts.model = phase_models.drafting.model; 
+    this.workspace.artifacts.provider = phase_models.drafting.provider;
+    this.workspace.artifacts.phase_models_used = { ...phase_models };
+    this.workspace.artifacts.tokensUsed = finalResult.tokens_used; 
     this.workspace.artifacts.generationTime = finalResult.generation_time;
     this.workspace.meta.generatedAt = new Date();
     this.workspace.generation.currentPhase = null;

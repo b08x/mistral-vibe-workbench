@@ -13,11 +13,13 @@ export abstract class ModelProvider {
 
   abstract getModel(modelId: string, apiKey: string): LanguageModel;
   abstract listModels(): ModelInfo[];
+  abstract fetchAvailableModels(apiKey: string): Promise<ModelInfo[]>;
 
   async generate(
     prompt: GenerationPrompt, 
     modelId: string, 
-    apiKey: string
+    apiKey: string,
+    options: { temperature?: number } = {}
   ): Promise<GenerationResult> {
     const startTime = Date.now();
     const model = this.getModel(modelId, apiKey);
@@ -26,8 +28,8 @@ export abstract class ModelProvider {
       model,
       system: prompt.system,
       prompt: prompt.user,
-      temperature: 0.2,
-      maxRetries: 5, // Increased from default (usually 2)
+      temperature: options.temperature ?? 0.2,
+      maxRetries: 5,
     });
 
     return {
@@ -56,6 +58,24 @@ export class AnthropicProvider extends ModelProvider {
       { id: 'claude-3-opus-20240229', name: 'Claude 3 Opus', context_window: 200000, supports_streaming: true, supports_json_mode: true },
     ];
   }
+
+  async fetchAvailableModels(apiKey: string): Promise<ModelInfo[]> {
+    const res = await fetch('https://api.anthropic.com/v1/models', {
+      headers: {
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01'
+      }
+    });
+    if (!res.ok) throw new Error(`Anthropic API error: ${res.status}`);
+    const data = await res.json();
+    return data.data.map((m: any) => ({
+      id: m.id,
+      name: m.display_name ?? m.id,
+      context_window: m.context_window ?? 200000,
+      supports_streaming: true,
+      supports_json_mode: true
+    }));
+  }
 }
 
 export class MistralProvider extends ModelProvider {
@@ -73,6 +93,21 @@ export class MistralProvider extends ModelProvider {
       { id: 'mistral-large-latest', name: 'Mistral Large', context_window: 128000, supports_streaming: true, supports_json_mode: true },
       { id: 'mistral-medium-latest', name: 'Mistral Medium', context_window: 32000, supports_streaming: true, supports_json_mode: true },
     ];
+  }
+
+  async fetchAvailableModels(apiKey: string): Promise<ModelInfo[]> {
+    const res = await fetch('https://api.mistral.ai/v1/models', {
+      headers: { 'Authorization': `Bearer ${apiKey}` }
+    });
+    if (!res.ok) throw new Error(`Mistral API error: ${res.status}`);
+    const data = await res.json();
+    return data.data.map((m: any) => ({
+      id: m.id,
+      name: m.id,
+      context_window: m.max_context_length ?? 32000,
+      supports_streaming: true,
+      supports_json_mode: true
+    }));
   }
 }
 
@@ -98,6 +133,21 @@ export class OpenRouterProvider extends ModelProvider {
       { id: 'anthropic/claude-3.5-sonnet', name: 'Claude 3.5 Sonnet (OR)', context_window: 200000, supports_streaming: true, supports_json_mode: true },
       { id: 'google/gemini-pro-1.5', name: 'Gemini Pro 1.5 (OR)', context_window: 1000000, supports_streaming: true, supports_json_mode: true },
     ];
+  }
+
+  async fetchAvailableModels(apiKey: string): Promise<ModelInfo[]> {
+    const res = await fetch('https://openrouter.ai/api/v1/models', {
+      headers: { 'Authorization': `Bearer ${apiKey}` }
+    });
+    if (!res.ok) throw new Error(`OpenRouter API error: ${res.status}`);
+    const data = await res.json();
+    return data.data.map((m: any) => ({
+      id: m.id,
+      name: m.name ?? m.id,
+      context_window: m.context_length ?? 8000,
+      supports_streaming: true,
+      supports_json_mode: true
+    }));
   }
 }
 
@@ -128,5 +178,24 @@ export class ProviderRegistry {
 
   list(): ModelProvider[] {
     return Array.from(this.providers.values());
+  }
+
+  async validateAndFetch(
+    providerId: string,
+    apiKey: string
+  ): Promise<{ status: 'valid' | 'invalid' | 'cors-error'; models: ModelInfo[]; error?: string }> {
+    const provider = this.get(providerId);
+    if (!provider) return { status: 'invalid', models: [], error: 'Provider not registered' };
+    try {
+      const models = await provider.fetchAvailableModels(apiKey);
+      return { status: models.length > 0 ? 'valid' : 'invalid', models };
+    } catch (err: any) {
+      const isCors = err.message?.includes('Failed to fetch') || err.message?.includes('NetworkError');
+      return {
+        status: isCors ? 'cors-error' : 'invalid',
+        models: [],
+        error: err.message
+      };
+    }
   }
 }

@@ -7,7 +7,7 @@ export const ReviewView: React.FC = () => {
   const { workspace, updateWorkspace } = useWorkspace();
 
   const handleStartGeneration = () => {
-    updateWorkspace({ meta: { ...workspace.meta, status: 'generating' } });
+    updateWorkspace({ meta: { ...workspace.meta, status: 'generation-config' } });
   };
 
   const handleEdit = (questionId: string, newValue: any) => {
@@ -24,8 +24,8 @@ export const ReviewView: React.FC = () => {
           </Button>
           <h1 className="text-3xl font-bold mt-4 tracking-tight uppercase">Generation Review</h1>
         </div>
-        <Button size="lg" onClick={handleStartGeneration} className="bg-emerald-600 hover:bg-emerald-500">
-          <Play className="w-4 h-4 mr-2" /> Initialize Artifact Generation
+        <Button size="lg" onClick={handleStartGeneration} className="orange-gradient text-white">
+          <Play className="w-4 h-4 mr-2" /> PROCEED_TO_MODEL_SELECTION
         </Button>
       </header>
 

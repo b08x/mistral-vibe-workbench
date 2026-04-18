@@ -17,12 +17,13 @@ export interface VibeWorkspace {
   artifacts: ArtifactState;
   generation: GenerationState;
   validation: ValidationState | null;
+  workbench_settings: WorkbenchModelSettings;
 }
 
 export interface WorkspaceMeta {
   entityType: 'agent' | 'skill' | 'system-prompt' | 'tool';
   outputFormat: 'toml' | 'markdown' | 'yaml';
-  status: 'entity-selection' | 'questions' | 'review' | 'generating' | 'complete' | 'error';
+  status: 'entity-selection' | 'questions' | 'review' | 'generation-config' | 'generating' | 'complete' | 'error';
   currentSection: string | null;
   currentQuestion: string | null;
   questionsAnswered: number;
@@ -54,6 +55,11 @@ export interface ArtifactState {
   provider: string | null;
   tokensUsed: number | null;
   generationTime: number | null;
+  phase_models_used?: {
+    context_gathering: PhaseModelConfig
+    drafting: PhaseModelConfig
+    review: PhaseModelConfig
+  }
 }
 
 export interface GenerationResult {
@@ -64,6 +70,26 @@ export interface GenerationResult {
   generation_time: number;
   dimensionCompliance?: Record<string, ComplianceStatus>;
   interventionsApplied?: InterventionRecord[];
+}
+
+// GENERATION SYSTEM MODELS
+export interface PhaseModelConfig {
+  provider: string      // provider ID matching ProviderRegistry key
+  model: string         // model ID from fetched ModelInfo list
+  temperature: number
+  max_tokens?: number
+}
+
+export interface WorkbenchModelSettings {
+  phase_models: {
+    context_gathering: PhaseModelConfig
+    drafting: PhaseModelConfig
+    review: PhaseModelConfig
+  }
+  // Populated after key validation. Keyed by provider ID.
+  available_models: Record<string, ModelInfo[]>
+  // Validation state per provider key
+  key_status: Record<string, 'unset' | 'validating' | 'valid' | 'invalid'>
 }
 
 export interface ModelInfo {

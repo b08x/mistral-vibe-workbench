@@ -187,7 +187,14 @@ export class ProviderRegistry {
     const provider = this.get(providerId);
     if (!provider) return { status: 'invalid', models: [], error: 'Provider not registered' };
     try {
-      const models = await provider.fetchAvailableModels(apiKey);
+      const rawModels = await provider.fetchAvailableModels(apiKey);
+      // Deduplicate by ID
+      const seen = new Set<string>();
+      const models = rawModels.filter(m => {
+        if (seen.has(m.id)) return false;
+        seen.add(m.id);
+        return true;
+      });
       return { status: models.length > 0 ? 'valid' : 'invalid', models };
     } catch (err: any) {
       const isCors = err.message?.includes('Failed to fetch') || err.message?.includes('NetworkError');

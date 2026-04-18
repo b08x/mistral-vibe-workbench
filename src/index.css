@@ -1,0 +1,67 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
+  /* Custom Immersive UI Palette */
+  --color-bg-deep: #080809;
+  --color-bg-surface: #121214;
+  --color-bg-elevated: #1a1a1d;
+  --color-mistral-orange: #ff5a1f;
+  --color-mistral-amber: #fca311;
+  --color-text-main: #e0e0e6;
+  --color-text-dim: #8e8e99;
+  --color-border-glow: rgba(255, 90, 31, 0.15);
+
+  /* Mapping to Tailwind Standard Variables */
+  --color-background: var(--color-bg-deep);
+  --color-foreground: var(--color-text-main);
+  --color-card: var(--color-bg-surface);
+  --color-card-foreground: var(--color-text-main);
+  --color-popover: var(--color-bg-elevated);
+  --color-popover-foreground: var(--color-text-main);
+  --color-primary: var(--color-mistral-orange);
+  --color-primary-foreground: #ffffff;
+  --color-secondary: var(--color-bg-elevated);
+  --color-secondary-foreground: var(--color-text-main);
+  --color-muted: var(--color-bg-elevated);
+  --color-muted-foreground: var(--color-text-dim);
+  --color-accent: var(--color-mistral-amber);
+  --color-accent-foreground: #000000;
+  --color-border: #28282b;
+  --color-input: #28282b;
+  --color-ring: var(--color-mistral-orange);
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground font-sans;
+    background-image: radial-gradient(circle at 50% 50%, #151518 0%, #080809 100%);
+  }
+}
+
+.glow-shadow {
+  box-shadow: 0 0 20px rgba(255, 90, 31, 0.1);
+}
+
+.orange-gradient {
+  background: linear-gradient(135deg, var(--color-mistral-orange), var(--color-mistral-amber));
+}
+
+.line-active {
+  background: rgba(255, 90, 31, 0.05);
+  border-left: 2px solid var(--color-mistral-orange);
+}
+
+@keyframes progress {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
+}
+
+.animate-progress {
+  animation: progress 2s ease-in-out infinite;
+}

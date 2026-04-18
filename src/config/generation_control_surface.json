@@ -1,0 +1,243 @@
+{
+  "meta": {
+    "schema_version": "3.0",
+    "description": "Universal Generation Control Surface — maps behavioral dimensions across task phases and output file types.",
+    "changelog": "v3.0: Extended for mistral-vibe workbench with AGENT_TOML, SKILL_MD, and SYSTEM_PROMPT_MD profiles.",
+    "phases": ["context_gathering", "drafting", "review"],
+    "phase_intent": {
+      "context_gathering": "Ground in source material, constraints, and scope. Minimize speculation. Maximize fidelity to inputs.",
+      "drafting": "Expression of synthesized content. Maximize thematic coherence and expressive commitment. Lock to established frame.",
+      "review": "Evaluate against intent and constraints. Break loops, introduce adversarial perspective, consolidate or flag divergence."
+    }
+  },
+
+  "file_profiles": {
+    "AGENT_TOML": {
+      "_purpose": "Mistral-vibe agent configuration file. Must be valid TOML with concrete configuration values.",
+      "_sre_risk": "Hard Boundary Enforcement without Gradation — invalid TOML syntax or non-existent tool names break the agent entirely.",
+      "dimensions": {
+        "Abstraction Level": {
+          "register": "none",
+          "directive": "Generate literal TOML configuration values. No abstractions. active_model must be a specific model string. Tool names must match built-in tools exactly.",
+          "failure_mode": "Abstract configuration values that cannot be parsed or executed.",
+          "self_check": "Is every configuration value concrete and executable?"
+        },
+        "Imagery Density": {
+          "register": "none",
+          "directive": "Comments factual only. No metaphors. Describe what each configuration section does, not what it represents.",
+          "failure_mode": "Comments that decorate rather than inform.",
+          "self_check": "Would a DevOps engineer understand each comment without interpretation?"
+        },
+        "Emotional / Rhetorical Intensity": {
+          "register": "none",
+          "directive": "Flat technical language. Comments describe, never advocate. No emphasis markers.",
+          "failure_mode": "Comments that sell the configuration rather than explain it.",
+          "self_check": "Are all comments purely descriptive?"
+        },
+        "Constraint Adherence": {
+          "register": "strict",
+          "directive": "TOML syntax must be valid. Tool names must match: bash, read_file, write_file, search_replace, grep, ask_user_question. Permission values must be: always | ask | deny. active_model must reference a configured model.",
+          "failure_mode": "Invalid TOML or non-existent references that cause runtime failures.",
+          "self_check": "Does this TOML parse? Do all tool names exist? Are all permission values valid?"
+        },
+        "Novelty Injection": {
+          "register": "none",
+          "directive": "Follow mistral-vibe TOML structure exactly. Do not invent new configuration sections or keys.",
+          "failure_mode": "Custom keys that mistral-vibe cannot parse.",
+          "self_check": "Is every key in this TOML documented in mistral-vibe specs?"
+        }
+      },
+      "pass_through_unchanged": ["Narrative / Logical Progression", "Perspective Stability", "Repetition / Structural Anchoring"],
+      "validation_rules": [
+        "TOML syntax must be valid (parseable by @iarna/toml)",
+        "active_model must be a non-empty string",
+        "All tool names in disabled_tools must match built-in tools",
+        "All tool permission values must be: always | ask | deny",
+        "All timeout values must be positive integers"
+      ]
+    },
+
+    "SKILL_MD": {
+      "_purpose": "Mistral-vibe skill definition with YAML frontmatter and markdown workflow documentation.",
+      "_sre_risk": "Competing Interpretations (Split-Brain) — frontmatter metadata conflicts with body content, or workflow has multiple incompatible organizational schemes.",
+      "dimensions": {
+        "Abstraction Level": {
+          "register": "low-to-moderate",
+          "directive": "Frontmatter metadata must be concrete (skill name, tools, compatibility). Workflow section can use moderate abstraction to organize steps, but each step must be actionable.",
+          "failure_mode": "Philosophical workflow descriptions that don't translate to executable steps.",
+          "self_check": "Could an agent execute each workflow step as written?"
+        },
+        "Imagery Density": {
+          "register": "moderate",
+          "directive": "Use concrete examples to illustrate workflow steps. One example per major step maximum. Examples should clarify the step, not decorate it.",
+          "failure_mode": "Examples that are metaphorical rather than executable.",
+          "self_check": "Can each example be copy-pasted and run?"
+        },
+        "Narrative / Logical Progression": {
+          "register": "sequential",
+          "directive": "Workflow must be step-by-step. Number the steps. Make dependencies explicit.",
+          "failure_mode": "Workflow that can be read in any order, or steps with implicit dependencies.",
+          "self_check": "Could someone execute this workflow by following the numbers?"
+        },
+        "Constraint Adherence": {
+          "register": "strict",
+          "directive": "YAML frontmatter must match schema: name (kebab-case), description (string), user-invocable (boolean), allowed-tools (array of valid tool names). Workflow must reference only tools listed in allowed-tools.",
+          "failure_mode": "Frontmatter with missing required fields, or workflow using tools not in allowed-tools.",
+          "self_check": "Does frontmatter validate? Does workflow use only declared tools?"
+        },
+        "Novelty Injection": {
+          "register": "controlled",
+          "directive": "Workflow organization can use one clear structure (sequential, decision-tree, state-machine). Do not mix organizational metaphors.",
+          "failure_mode": "Workflow organized as sequential in one section, decision-tree in another.",
+          "self_check": "Can I describe the workflow structure in one sentence?"
+        }
+      },
+      "pass_through_unchanged": ["Emotional / Rhetorical Intensity", "Perspective Stability", "Repetition / Structural Anchoring"],
+      "recommended_sections": ["## Overview", "## Workflow", "## Examples", "## Error Handling"]
+    },
+
+    "SYSTEM_PROMPT_MD": {
+      "_purpose": "Custom system prompt for mistral-vibe agent. Defines expertise, communication approach, and behavioral guidelines.",
+      "_sre_risk": "Manifesto drift (High Exploration + Weak Constraints) — theatrical identity claims instead of professional expertise.",
+      "dimensions": {
+        "Abstraction Level": {
+          "register": "moderate",
+          "directive": "Expertise section can synthesize domain knowledge thematically. Communication and Behavioral sections must be concrete and actionable.",
+          "failure_mode": "Prompt describes the agent's philosophical essence but not how it behaves.",
+          "self_check": "Does each section translate to observable agent behavior?"
+        },
+        "Imagery Density": {
+          "register": "moderate",
+          "directive": "Domain-appropriate analogies permitted in expertise section. Communication and constraint sections should be plain language.",
+          "failure_mode": "Every expertise claim is a metaphor; reader cannot extract concrete knowledge.",
+          "self_check": "Can I extract the agent's actual knowledge domains without decoding metaphors?"
+        },
+        "Emotional / Rhetorical Intensity": {
+          "register": "measured",
+          "directive": "The agent should have a distinct, professional voice. Not flat, but the voice should serve the reader, not perform for them. No ALL CAPS.",
+          "failure_mode": "Prompt reads as marketing copy or manifesto.",
+          "self_check": "Does the tone feel earned by the domain, or borrowed from a dramatic context?"
+        },
+        "Novelty Injection": {
+          "register": "controlled",
+          "directive": "Express expertise distinctly but within domain conventions. One organizing frame for the entire prompt.",
+          "failure_mode": "Each section introduces a new framing; the prompt has no coherent identity.",
+          "self_check": "How many distinct conceptual frames does this prompt contain? (Should be 1-2 max.)"
+        },
+        "Perspective Stability": {
+          "register": "first-person-professional",
+          "directive": "Write in first person ('I am a security expert'). Maintain consistent voice across all sections.",
+          "failure_mode": "Voice shifts make the prompt feel fragmented or uncertain.",
+          "self_check": "Is the first-person voice consistent throughout?"
+        }
+      },
+      "pass_through_unchanged": ["Narrative / Logical Progression", "Repetition / Structural Anchoring", "Constraint Adherence"],
+      "recommended_sections": ["## Identity & Role", "## Expertise", "## Communication Approach", "## Constraints", "## Priorities"]
+    }
+  },
+
+  "dimensions": [
+    {
+      "dimension": "Abstraction Level",
+      "description": "Degree to which the output operates at conceptual vs concrete registers.",
+      "context_gathering": {
+        "directive": "Stay concrete. Catalog facts, not interpretations. Low abstraction maximizes fidelity to source material.",
+        "failure_mode": "Premature synthesis — jumping to thematic conclusions before the source is fully mapped.",
+        "self_check": "Am I cataloging what is there, or what I think it means?"
+      },
+      "drafting": {
+        "directive": "Move to thematic and conceptual registers where appropriate. But apply file_profile overrides.",
+        "failure_mode": "Existential drift — the output describes philosophy instead of function.",
+        "self_check": "Does abstraction serve the artifact type, or am I abstracting because I can?"
+      },
+      "review": {
+        "directive": "Check whether abstractions land. If a claim requires decoder-ring work, demote to concrete.",
+        "failure_mode": "Accepting abstractions that don't earn their complexity.",
+        "self_check": "Does each abstraction clarify or obscure?"
+      }
+    },
+    {
+      "dimension": "Imagery Density",
+      "description": "Frequency and vividness of metaphor, analogy, and figurative language.",
+      "context_gathering": {
+        "directive": "Minimal imagery. No metaphors.",
+        "failure_mode": "Metaphorical cataloging — describing the source through figures of speech.",
+        "self_check": "Am I using the source's language or inventing imagery?"
+      },
+      "drafting": {
+        "directive": "Apply file_profile register. Technical artifacts: minimal to none. Each metaphor must clarify, not decorate.",
+        "failure_mode": "Metaphor accumulation — every sentence becomes a figure of speech.",
+        "self_check": "How many metaphors per section?"
+      },
+      "review": {
+        "directive": "Audit metaphor count and consistency. Cut metaphors that compete or don't land.",
+        "failure_mode": "Metaphor proliferation or metaphor starvation.",
+        "self_check": "Do metaphors clarify or compete?"
+      }
+    },
+    {
+       "dimension": "Novelty Injection",
+       "description": "Degree to which the output introduces unexpected connections, framings, or approaches.",
+       "context_gathering": {
+         "directive": "Suppress novelty. Note interesting connections, but do not pursue them. Your job is to understand what is there.",
+         "failure_mode": "Chasing tangents before the map is complete.",
+         "self_check": "Am I following the source or departing from it?"
+       },
+       "drafting": {
+         "directive": "Introduce novel connections deliberately and sparingly. Apply file_profile register. Technical artifacts: suppressed (use standard patterns).",
+         "failure_mode": "Scope creep — the draft becomes about your additions rather than the synthesis.",
+         "self_check": "Is each novel element serving the synthesis?"
+       },
+       "review": {
+         "directive": "Force one maximum-entropy pass: what is the most unexpected, defensible reframing this material supports?",
+         "failure_mode": "Treating the draft as final because it is coherent, without asking if it is interesting.",
+         "self_check": "What is the most surprising true thing this material supports that the draft has not said?"
+       }
+    },
+    {
+       "dimension": "Constraint Adherence",
+       "description": "How strictly boundaries and requirements are enforced.",
+       "context_gathering": {
+         "directive": "Internalize constraints. They are not negotiable. Catalog what is required, forbidden, and in-scope.",
+         "failure_mode": "Loosening constraints to make the problem easier.",
+         "self_check": "Have I cataloged all constraints accurately?"
+       },
+       "drafting": {
+         "directive": "Enforce constraints strictly. Apply file_profile validation rules.",
+         "failure_mode": "Rationalizing violations as creative decisions.",
+         "self_check": "For each constraint violation found: deliberate, documented, worth it?"
+       },
+       "review": {
+         "directive": "Audit all constraints. Binary pass/fail for technical artifacts.",
+         "failure_mode": "Accepting violations because the draft 'works'.",
+         "self_check": "Does this pass all constraint checks?"
+       }
+    }
+  ],
+
+  "global_intervention_primitives": {
+    "too_much_exploration": "Impose commit constraint: force a decision, limit alternatives. Cap imagery density.",
+    "too_much_collapse": "Force expansion: require N alternatives, inject adversarial framing.",
+    "loop_detected": "Break recursion: remove self-referential context, reset to problem statement only.",
+    "constraint_violation_detected": "Surface and name the violation before deciding whether to accept or revert it.",
+    "perspective_drift_detected": "Re-anchor: restate the synthesis perspective explicitly before continuing."
+  },
+
+  "sre_failure_mode_index": {
+    "High Exploration + Weak Constraints": {
+      "sre_analogue": "Thundering Herd / Unbounded Retry Storms",
+      "telemetry": "Metaphor accumulation; imagery density runaway; every sentence becomes a figure of speech.",
+      "intervention": "too_much_exploration"
+    },
+    "Self-Revision Loop": {
+      "sre_analogue": "Distributed Livelock",
+      "telemetry": "Draft enters self-commentary; output discusses its own construction.",
+      "intervention": "loop_detected"
+    },
+    "Competing Interpretations": {
+      "sre_analogue": "Split-Brain Consensus",
+      "telemetry": "Document uses more than two distinct metaphor systems; signal contradicts across sections.",
+      "intervention": "perspective_drift_detected"
+    }
+  }
+}

@@ -12,7 +12,7 @@ import controlSurfaceData from '../../config/generation_control_surface.json';
 
 // Types for the control surface
 type Phase = 'context_gathering' | 'drafting' | 'review';
-type EntityType = 'agent' | 'skill' | 'system-prompt' | 'tool';
+type EntityType = 'agent' | 'skill' | 'system-prompt' | 'tool' | 'subagent';
 
 interface DimensionDirective {
   register: string;
@@ -64,6 +64,7 @@ export class UGCSController {
       case 'agent': return 'AGENT_TOML';
       case 'skill': return 'SKILL_MD';
       case 'system-prompt': return 'SYSTEM_PROMPT_MD';
+      case 'subagent': return 'SUBAGENT_TOML';
       default: return 'AGENT_TOML';
     }
   }

@@ -22,6 +22,10 @@ import {
   buildSystemPromptPrompt 
 } from './prompts/system-prompt-builder';
 
+import { 
+  buildSubagentConfigPrompt 
+} from './prompts/subagent-config-builder';
+
 export class GenerationOrchestrator {
   private workspace: VibeWorkspace;
   private apiKeys: Record<string, string>;
@@ -117,6 +121,8 @@ export class GenerationOrchestrator {
         return buildSkillDefinitionPrompt(phase, this.workspace, this.controller, draft);
       case 'system-prompt':
         return buildSystemPromptPrompt(phase, this.workspace, this.controller, draft);
+      case 'subagent':
+        return buildSubagentConfigPrompt(phase, this.workspace, this.controller, draft);
       default:
         throw new Error(`Unsupported entity type: ${this.workspace.meta.entityType}`);
     }

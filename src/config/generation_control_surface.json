@@ -177,6 +177,95 @@
         "[[examples]] — Few-Shot Example Pairs (input/output TOML tables)",
         "[validation] — Variable Validation Rules (required fields, regex checks)"
       ]
+    },
+    "SUBAGENT_TOML": {
+      "_purpose": "Mistral-vibe parallel extraction subagent configuration. Controls one node in a chunked file-processing fleet. Output is TOML driving a downstream JSON extraction process.",
+      "_sre_risk": "Hard Boundary Enforcement without Gradation — invalid edge type enum values or non-existent file paths cause extraction pipeline failures. Non-binary confidence scores outside defined ranges produce invalid graph data.",
+      "dimensions": {
+        "Abstraction Level": {
+          "register": "none",
+          "directive": "All values must be concrete literals. chunk_id and total_chunks must be positive integers. files must be an array of actual relative file paths — no glob patterns, no placeholders. Edge type values must be from the defined enum exactly. Confidence scores must be floats from the defined range table.",
+          "failure_mode": "File paths with glob patterns or placeholders. Non-integer chunk IDs. Abstract descriptions in place of concrete enum values.",
+          "self_check": "Can every value in this TOML be parsed and used directly without interpretation? Are all file paths literal relative strings?"
+        },
+        "Imagery Density": {
+          "register": "none",
+          "directive": "Comments factual only. Describe what each configuration controls, not what it represents. The extraction domain (graph nodes, semantic similarity, hyperedges) uses precise technical vocabulary — use it without embellishment.",
+          "failure_mode": "Comments that describe the graph metaphorically ('weaving the knowledge web') rather than technically ('adds semantically_similar_to edges between nodes with shared problem domain').",
+          "self_check": "Would a pipeline engineer understand each comment without interpretation?"
+        },
+        "Constraint Adherence": {
+          "register": "absolute",
+          "directive": "Edge relation values must be from this exact list: calls | implements | references | cites | conceptually_related_to | shares_data_with | semantically_similar_to | rationale_for | import | defines | wraps | participate_in | form. Confidence enum must be: EXTRACTED | INFERRED | AMBIGUOUS. Confidence scores must follow the range table: EXTRACTED=1.0, INFERRED_HIGH=0.9, INFERRED_MID=0.7, INFERRED_LOW=0.5, AMBIGUOUS=0.2. File type values in scope.types must be: code | document | paper | image. Subagent role must be: extraction | analysis | verification | execution.",
+          "failure_mode": "Invented edge type names. Confidence scores outside the defined range table. File type strings not in the enum.",
+          "self_check": "Is every enum value in this TOML traceable to the defined lists? Is every confidence score within its defined range?"
+        },
+        "Novelty Injection": {
+          "register": "none",
+          "directive": "Follow subagent-template.md structure exactly. Do not invent new extraction modes, new file handler sections, or new confidence tiers. The extraction behavior sections ([extraction.edge_rules], [extraction.confidence], [extraction.semantic_similarity], [extraction.hyperedges]) have a fixed schema — do not add keys beyond what the template defines.",
+          "failure_mode": "Custom extraction modes not in the template. New confidence tier names. Invented file handler extension lists.",
+          "self_check": "Is every key in this TOML present in the subagent-template.md schema?"
+        },
+        "Emotional / Rhetorical Intensity": {
+          "register": "none",
+          "directive": "Flat technical language throughout. Comments describe pipeline behavior. No emphasis markers.",
+          "failure_mode": "Comments that dramatize the extraction process.",
+          "self_check": "Are all comments purely descriptive of pipeline mechanics?"
+        },
+        "Narrative / Logical Progression": {
+          "register": "strict-sequential",
+          "directive": "Section order must follow the template: [subagent] → [subagent.scope] → [subagent.mode] → [subagent.output] → [subagent.error_handling] → [extraction.*] → [file_handlers.*] → [context]. Do not reorder sections.",
+          "failure_mode": "Sections out of template order. Extraction behavior sections appearing before subagent identity sections.",
+          "self_check": "Does the section order match the subagent-template.md exactly?"
+        }
+      },
+      "recommended_sections": [
+        "[subagent] — Identity (role, chunk_id, total_chunks)",
+        "[subagent.scope] — File Scope (files array, types, max_files)",
+        "[subagent.mode] — Extraction Mode (deep, semantic, hyperedges flags)",
+        "[subagent.output] — Output Requirements (format, schema_version, require_* flags)",
+        "[subagent.error_handling] — Error Handling (retry_on_fail, max_retries, log_failures)",
+        "[extraction.edge_rules] — Edge Classification (extracted, inferred, ambiguous lists)",
+        "[extraction.confidence] — Confidence Score Table (float values per tier)",
+        "[extraction.node_id] — Node ID Schema (format, stem, entity rules)",
+        "[extraction.semantic_similarity] — Semantic Similarity Rules (enabled flag)",
+        "[extraction.hyperedges] — Hyperedge Rules (enabled, min_nodes, max_per_chunk)",
+        "[file_handlers.code] — Code File Handler (extensions, focus, skip lists)",
+        "[file_handlers.document] — Document Handler (extensions, extract list)",
+        "[file_handlers.paper] — Paper Handler (extensions, extract list)",
+        "[file_handlers.image] — Image Handler (extensions, use_vision, extract list)",
+        "[context] — Domain Context Injection (domain_hint, prompt, frontmatter propagation)"
+      ],
+      "validation_rules": [
+        "TOML syntax must be valid",
+        "subagent.role must be one of: extraction | analysis | verification | execution",
+        "subagent.chunk_id must be a positive integer >= 1",
+        "subagent.total_chunks must be a positive integer >= subagent.chunk_id",
+        "subagent.scope.files must be a non-empty array of strings",
+        "subagent.scope.types values must all be from: code | document | paper | image",
+        "subagent.scope.max_files must be a positive integer",
+        "subagent.output.format must be 'json'",
+        "subagent.output.schema_version must be a non-empty string",
+        "All edge names in extraction.edge_rules.extracted must be from the defined edge enum",
+        "All edge names in extraction.edge_rules.inferred must be from the defined edge enum",
+        "extraction.confidence.extracted must be 1.0",
+        "extraction.confidence.inferred_high must be 0.9",
+        "extraction.confidence.inferred_mid must be 0.7",
+        "extraction.confidence.inferred_low must be 0.5",
+        "extraction.confidence.ambiguous must be 0.2",
+        "extraction.node_id.format must be a non-empty string",
+        "extraction.hyperedges.min_nodes must be an integer >= 3",
+        "file_handlers.image.use_vision must be boolean"
+      ],
+      "anti_patterns": [
+        "glob patterns in subagent.scope.files",
+        "confidence score values not in the defined range table",
+        "edge type names not in the defined enum",
+        "subagent.chunk_id > subagent.total_chunks",
+        "file handler extension lists missing the leading dot (e.g. 'py' instead of '.py')",
+        "[file_handlers.*] blocks for handler types not in: code | document | paper | image",
+        "Inventing new extraction behavior keys not in the template schema"
+      ]
     }
   },
 

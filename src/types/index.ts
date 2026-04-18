@@ -10,6 +10,7 @@
 export interface VibeWorkspace {
   meta: WorkspaceMeta;
   agentConfig?: AgentConfigState;
+  subagentConfig?: SubagentConfigState;
   skillDefinition?: SkillDefinitionState;
   systemPrompt?: SystemPromptState;
   toolConfig?: ToolConfigState;
@@ -21,7 +22,7 @@ export interface VibeWorkspace {
 }
 
 export interface WorkspaceMeta {
-  entityType: 'agent' | 'skill' | 'system-prompt' | 'tool';
+  entityType: 'agent' | 'skill' | 'system-prompt' | 'tool' | 'subagent';
   outputFormat: 'toml' | 'markdown' | 'yaml';
   status: 'entity-selection' | 'questions' | 'review' | 'generation-config' | 'component-preview' | 'generating' | 'complete' | 'error';
   currentSection: string | null;
@@ -272,6 +273,71 @@ export interface ToolPermissionConfig {
   max_matches?: number;
 }
 
+export interface SubagentConfigState {
+  // [subagent] — Identity
+  role: 'extraction' | 'analysis' | 'verification' | 'execution' | null;
+  chunk_id: number | null;
+  total_chunks: number | null;
+
+  // [subagent.scope]
+  scope_files: string[] | null;            // relative file paths only
+  scope_types: Array<'code' | 'document' | 'paper' | 'image'> | null;
+  scope_max_files: number | null;
+
+  // [subagent.mode]
+  mode_deep: boolean | null;
+  mode_semantic: boolean | null;
+  mode_hyperedges: boolean | null;
+
+  // [subagent.output]
+  output_format: 'json' | null;
+  output_schema_version: string | null;
+  output_require_nodes: boolean | null;
+  output_require_edges: boolean | null;
+  output_require_confidence: boolean | null;
+
+  // [subagent.error_handling]
+  retry_on_fail: boolean | null;
+  max_retries: number | null;
+  log_failures: boolean | null;
+
+  // [extraction.edge_rules]
+  edge_extracted: string[] | null;         // from defined enum
+  edge_inferred: string[] | null;          // from defined enum
+  edge_ambiguous: string[] | null;         // from defined enum
+
+  // [extraction.confidence] — these are fixed; include for explicit override
+  confidence_extracted: number | null;     // always 1.0
+  confidence_inferred_high: number | null; // always 0.9
+  confidence_inferred_mid: number | null;  // always 0.7
+  confidence_inferred_low: number | null;  // always 0.5
+  confidence_ambiguous: number | null;     // always 0.2
+
+  // [extraction.node_id]
+  node_id_format: string | null;
+  node_id_stem_rule: string | null;
+  node_id_entity_rule: string | null;
+
+  // [extraction.semantic_similarity]
+  semantic_similarity_enabled: boolean | null;
+
+  // [extraction.hyperedges]
+  hyperedges_enabled: boolean | null;
+  hyperedges_min_nodes: number | null;
+  hyperedges_max_per_chunk: number | null;
+
+  // [file_handlers.*] — enable/disable per type
+  handler_code_enabled: boolean | null;
+  handler_document_enabled: boolean | null;
+  handler_paper_enabled: boolean | null;
+  handler_image_enabled: boolean | null;
+
+  // [context]
+  context_domain_hint: string | null;
+  context_prompt: string | null;
+  context_frontmatter_propagate: string[] | null;  // field names to propagate
+}
+
 export interface SkillDefinitionState {
   skill_name: string | null;
   skill_description: string | null;
@@ -370,7 +436,7 @@ export interface QuestionModule {
   id: string;
   name: string;
   description: string;
-  entity_type: 'agent' | 'skill' | 'system-prompt' | 'tool';
+  entity_type: 'agent' | 'skill' | 'system-prompt' | 'tool' | 'subagent';
   trigger_condition?: (workspace: VibeWorkspace) => boolean;
   sections: QuestionSection[];
   generation_hints?: GenerationHints;
@@ -399,6 +465,7 @@ export interface Question {
   placeholder?: string;
   autocomplete?: string[];
   multiline?: boolean;
+  show_if?: (answers: Record<string, any>) => boolean;
 }
 
 export type QuestionType = 

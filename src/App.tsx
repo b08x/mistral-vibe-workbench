@@ -19,6 +19,8 @@ import { Settings, LogOut, Home, Box, Zap, FileText } from 'lucide-react';
 import { Button } from './components/ui';
 import { cn } from './lib/utils';
 
+import { ErrorBoundary } from './components/ui/ErrorBoundary';
+
 const AppContent: React.FC = () => {
   const { workspace, resetWorkspace, updateWorkspace } = useWorkspace();
   const [showSettings, setShowSettings] = useState(false);
@@ -126,10 +128,12 @@ const AppContent: React.FC = () => {
 
 export default function App() {
   return (
-    <WorkspaceProvider>
-      <SessionProvider>
-        <AppContent />
-      </SessionProvider>
-    </WorkspaceProvider>
+    <ErrorBoundary>
+      <WorkspaceProvider>
+        <SessionProvider>
+          <AppContent />
+        </SessionProvider>
+      </WorkspaceProvider>
+    </ErrorBoundary>
   );
 }

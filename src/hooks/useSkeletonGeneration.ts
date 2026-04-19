@@ -1,8 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useWorkspace } from '../context/WorkspaceContext';
-import { SkeletonOrchestrator, SkeletonGenerationError } from '../lib/generation/skeleton-orchestrator';
-import { ProviderRegistry } from '../lib/providers/registry';
-import { WorkspaceManager } from '../lib/storage/workspace-manager';
 import { ComponentPreview, PreviewSection } from '../types';
 
 export function useSkeletonGeneration() {
@@ -21,18 +18,18 @@ export function useSkeletonGeneration() {
     setRawResponse(null);
 
     try {
-      const draftingConfig = workspace.workbench_settings.phase_models.drafting;
-      const apiKeys = WorkspaceManager.getAllAPIKeys();
-      const apiKey = apiKeys[draftingConfig.provider];
-      
-      const provider = ProviderRegistry.getInstance().get(draftingConfig.provider);
-      
-      if (!provider || !apiKey) {
-        throw new Error(`Missing provider or API key for Drafting phase (Provider: ${draftingConfig.provider})`);
+      const response = await fetch('/api/generate/skeleton', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ workspace })
+      });
+
+      if (!response.ok) {
+        const errData = await response.json();
+        throw new Error(errData.error || `Server responded with ${response.status}`);
       }
 
-      const orchestrator = new SkeletonOrchestrator(workspace, provider, apiKey);
-      const preview = await orchestrator.generate();
+      const preview = await response.json();
       
       updateWorkspace({
         artifacts: {
@@ -41,11 +38,8 @@ export function useSkeletonGeneration() {
         }
       });
     } catch (err: any) {
-      console.error('Skeleton generation failed:', err);
-      setError(err.message || 'An unknown error occurred during skeleton generation.');
-      if (err instanceof SkeletonGenerationError) {
-        setRawResponse(err.rawResponse);
-      }
+      console.error('Skeleton planning failed:', err);
+      setError(err.message || 'An unknown error occurred during skeleton planning.');
     } finally {
       setIsGenerating(false);
     }

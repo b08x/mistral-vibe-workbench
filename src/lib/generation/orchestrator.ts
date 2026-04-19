@@ -32,14 +32,13 @@ export class GenerationOrchestrator {
   private controller: UGCSController;
   private registry = ProviderRegistry.getInstance();
 
-  constructor(workspace: VibeWorkspace) {
+  constructor(workspace: VibeWorkspace, apiKeys?: Record<string, string>) {
     this.workspace = workspace;
-    this.apiKeys = WorkspaceManager.getAllAPIKeys();
+    this.apiKeys = apiKeys || WorkspaceManager.getAllAPIKeys();
     this.controller = new UGCSController(workspace.meta.entityType);
   }
 
   async generate(): Promise<VibeWorkspace> {
-    const delay = (ms: number) => new Promise(r => setTimeout(r, ms));
     const { phase_models } = this.workspace.workbench_settings;
 
     // Helper for per-phase generation
@@ -58,15 +57,18 @@ export class GenerationOrchestrator {
     // 1. PHASE: CONTEXT_GATHERING
     this.workspace.generation.currentPhase = 'context_gathering';
     const contextGatheringPrompt = this.getPrompt('context_gathering');
+    
+    // Using structured output enforcement (TASK-2.1)
     const contextResult = await runPhase('context_gathering', contextGatheringPrompt);
     
     try {
-      this.workspace.generation.contextMap = JSON.parse(contextResult.content);
+      // Clean potential JSON markdown blocks
+      const jsonStr = contextResult.content.replace(/^```json\n?/, '').replace(/\n?```$/, '').trim();
+      this.workspace.generation.contextMap = JSON.parse(jsonStr);
     } catch (e) {
+      console.warn('[ORCHESTRATOR] Failed to parse strict JSON for context_gathering, falling back to raw', e);
       this.workspace.generation.contextMap = { raw: contextResult.content };
     }
-
-    await delay(1000);
 
     // 2. PHASE: DRAFTING
     this.workspace.generation.currentPhase = 'drafting';
@@ -88,8 +90,6 @@ export class GenerationOrchestrator {
     const draftingPrompt = this.getPrompt('drafting');
     const draftResult = await runPhase('drafting', draftingPrompt);
     this.workspace.generation.draftArtifact = draftResult.content;
-
-    await delay(1000);
 
     // 3. PHASE: REVIEW
     this.workspace.generation.currentPhase = 'review';

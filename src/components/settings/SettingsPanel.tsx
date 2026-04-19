@@ -2,36 +2,62 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, Button, Input, Select, Alert, AlertTitle, AlertDescription } from '../ui';
 import { WorkspaceManager } from '../../lib/storage/workspace-manager';
 import { Key, ShieldAlert, Save, Trash2, CheckCircle2, RefreshCw } from 'lucide-react';
-import { ProviderRegistry } from '../../lib/providers/registry';
 import { useModelValidation } from '../../hooks/useModelValidation';
 
 export const SettingsPanel: React.FC = () => {
   const [keys, setKeys] = useState<Record<string, string>>({});
+  const [serverStatus, setServerStatus] = useState<Record<string, 'configured' | 'missing'>>({});
   const [saved, setSaved] = useState(false);
-  const registry = ProviderRegistry.getInstance();
-  const providers = registry.list();
   const { validateKey, keyStatus } = useModelValidation();
+
+  // Static list for UI (matching ProviderRegistry fallback)
+  const providers = [
+    { id: 'anthropic', name: 'Anthropic', supportsDirectBrowser: false },
+    { id: 'openai', name: 'OpenAI', supportsDirectBrowser: false },
+    { id: 'mistral', name: 'Mistral', supportsDirectBrowser: false },
+    { id: 'openrouter', name: 'OpenRouter', supportsDirectBrowser: true },
+    { id: 'google', name: 'Google / Gemini', supportsDirectBrowser: true },
+  ];
 
   useEffect(() => {
     const loadedKeys = WorkspaceManager.getAPIKeys() as Record<string, string>;
     setKeys(loadedKeys);
     
+    // Check server status
+    fetch('/api/providers/status')
+      .then(res => res.json())
+      .then(setServerStatus)
+      .catch(err => console.error('Failed to fetch server provider status', err));
+
     // Auto-validate configured keys on load
     Object.entries(loadedKeys).forEach(([id, key]) => {
       if (key && key.length > 5) {
         validateKey(id, key);
       }
     });
+
+    // Also auto-validate server-side keys
+    providers.forEach(p => {
+      if (!loadedKeys[p.id]) {
+        validateKey(p.id, ''); // Try validating with server key
+      }
+    });
   }, []);
 
   const getStatusLabel = (providerId: string) => {
     const status = keyStatus[providerId] ?? 'unset';
-    if (keys[providerId] && status === 'unset') return { label: 'Configured', color: 'text-amber-500' };
+    const isServerConfigured = serverStatus[providerId] === 'configured';
+    
+    if (status === 'validating') return { label: 'Checking...', color: 'text-blue-400' };
+    if (status === 'valid')      return { label: 'Active ✓',     color: 'text-emerald-500' };
+    
+    if (isServerConfigured) return { label: 'Server Configured', color: 'text-emerald-400' };
+    
+    if (keys[providerId] && status === 'unset') return { label: 'Configured (Client)', color: 'text-amber-500' };
+
     switch (status) {
-      case 'validating': return { label: 'Checking...', color: 'text-blue-400' };
-      case 'valid':      return { label: 'Valid ✓',     color: 'text-emerald-500' };
       case 'invalid':    return { label: 'Invalid Key', color: 'text-red-500' };
-      default:           return { label: 'Missing',     color: 'text-amber-500' };
+      default:           return { label: 'Missing',     color: 'text-amber-500 opacity-50' };
     }
   };
 

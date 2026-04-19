@@ -1,17 +1,15 @@
 import { useCallback } from 'react';
 import { useWorkspace, INITIAL_WORKSPACE } from '../context/WorkspaceContext';
-import { ProviderRegistry } from '../lib/providers/registry';
 import { WorkspaceManager } from '../lib/storage/workspace-manager';
 import { PhaseModelConfig, ModelInfo } from '../types';
 
 export function useModelValidation() {
   const { workspace, updateWorkspace } = useWorkspace();
-  const registry = ProviderRegistry.getInstance();
   const settings = workspace.workbench_settings || INITIAL_WORKSPACE.workbench_settings;
 
   const validateKey = useCallback(async (providerId: string, apiKey: string) => {
     if (!settings) return;
-    // Set validating state immediately
+    
     updateWorkspace({
       workbench_settings: {
         ...settings,
@@ -19,22 +17,38 @@ export function useModelValidation() {
       }
     });
 
-    const result = await registry.validateAndFetch(providerId, apiKey);
+    try {
+      const response = await fetch('/api/providers/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ providerId, apiKey })
+      });
 
-    updateWorkspace({
-      workbench_settings: {
-        ...settings,
-        key_status: {
-          ...settings.key_status,
-          [providerId]: result.status === 'cors-error' ? 'invalid' : result.status
-        },
-        available_models: {
-          ...settings.available_models,
-          ...(result.models.length > 0 ? { [providerId]: result.models } : {})
+      const result = await response.json();
+
+      updateWorkspace({
+        workbench_settings: {
+          ...settings,
+          key_status: {
+            ...settings.key_status,
+            [providerId]: result.status
+          },
+          available_models: {
+            ...settings.available_models,
+            ...(result.models?.length > 0 ? { [providerId]: result.models } : {})
+          }
         }
-      }
-    });
-  }, [settings, updateWorkspace, registry]);
+      });
+    } catch (err) {
+      console.error('Provider validation failed:', err);
+      updateWorkspace({
+        workbench_settings: {
+          ...settings,
+          key_status: { ...settings.key_status, [providerId]: 'invalid' }
+        }
+      });
+    }
+  }, [settings, updateWorkspace]);
 
   const setPhaseModel = useCallback((
     phase: 'context_gathering' | 'drafting' | 'review',

@@ -1,9 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useWorkspace } from '../../context/WorkspaceContext';
 import { Card, CardContent, CardHeader, CardTitle, Button, Progress, Alert, AlertTitle, AlertDescription } from '../ui';
-import { GenerationOrchestrator } from '../../lib/generation/orchestrator';
-import { ProviderRegistry } from '../../lib/providers/registry';
-import { WorkspaceManager } from '../../lib/storage/workspace-manager';
 import { 
   CheckCircle2, 
   Circle, 
@@ -31,23 +28,25 @@ export const GenerationView: React.FC = () => {
     const startGen = async () => {
       if (workspace.meta.status !== 'generating') return;
 
-      const orchestrator = new GenerationOrchestrator(workspace);
-      
       try {
-        // Simple phase simulation for UI feedback
-        setActivePhaseIndex(0);
-        await new Promise(r => setTimeout(r, 1000));
-        setActivePhaseIndex(1);
-        await new Promise(r => setTimeout(r, 2000));
-        setActivePhaseIndex(2);
+        const response = await fetch('/api/generate/artifact', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ workspace })
+        });
 
-        const nextWorkspace = await orchestrator.generate();
+        if (!response.ok) {
+          const errData = await response.json();
+          throw new Error(errData.error || `Server responded with ${response.status}`);
+        }
+
+        const nextWorkspace = await response.json();
         updateWorkspace({ 
           ...nextWorkspace, 
           meta: { ...nextWorkspace.meta, status: 'complete' } 
         });
       } catch (err: any) {
-        console.error(err);
+        console.error('Generation failed:', err);
         setError(err.message || 'Generation failed. Check console for details.');
         updateWorkspace({ meta: { ...workspace.meta, status: 'error' } });
       }
@@ -55,6 +54,15 @@ export const GenerationView: React.FC = () => {
 
     startGen();
   }, [workspace.meta.status]);
+
+  // Map backend phases to local index for UI
+  useEffect(() => {
+    const phases = ['context_gathering', 'drafting', 'review'];
+    const idx = phases.indexOf(workspace.generation.currentPhase as string);
+    if (idx !== -1) {
+      setActivePhaseIndex(idx);
+    }
+  }, [workspace.generation.currentPhase]);
 
   const getPhaseStatus = (phase: string) => {
     if (workspace.generation.currentPhase === phase) return 'active';

@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSession } from '../../context/SessionContext';
 import { useWorkspace } from '../../context/WorkspaceContext';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, Button, Input, Textarea, Select, Progress } from '../ui';
-import { ArrowLeft, ArrowRight, CheckCircle2, ListFilter, Trash2, Settings2 } from 'lucide-react';
+import { ArrowLeft, ArrowRight, CheckCircle2, ListFilter, Trash2, Settings2, Check } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
 export const QAShell: React.FC = () => {
@@ -10,10 +10,34 @@ export const QAShell: React.FC = () => {
   const { workspace, updateWorkspace, resetWorkspace } = useWorkspace();
   const [inputValue, setInputValue] = useState<any>('');
 
+  // Sync internal state with session state when question changes
+  useEffect(() => {
+    if (currentQuestion) {
+      const existingAnswer = workspace.session.answers[currentQuestion.id];
+      if (existingAnswer !== undefined) {
+        setInputValue(existingAnswer);
+      } else {
+        // Initialize based on type
+        if (currentQuestion.type === 'multi-select') {
+          setInputValue([]);
+        } else if (currentQuestion.type === 'boolean') {
+          setInputValue(currentQuestion.default_value ?? '');
+        } else {
+          setInputValue('');
+        }
+      }
+    }
+  }, [currentQuestion?.id]);
+
+  const isValueEmpty = (val: any) => {
+    if (val === null || val === undefined || val === '') return true;
+    if (Array.isArray(val)) return val.length === 0;
+    return false;
+  };
+
   const handleNext = () => {
-    if (inputValue !== '' || !currentQuestion?.required) {
+    if (!isValueEmpty(inputValue) || !currentQuestion?.required) {
       answerQuestion(inputValue);
-      setInputValue('');
     }
   };
 
@@ -166,6 +190,46 @@ export const QAShell: React.FC = () => {
                         </Button>
                       </div>
                     )}
+                    {currentQuestion.type === 'multi-select' && currentQuestion.config && (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {(currentQuestion.config as any).options.map((opt: any) => {
+                          const isSelected = Array.isArray(inputValue) && inputValue.includes(opt.value);
+                          return (
+                            <Button
+                              key={opt.value}
+                              variant={isSelected ? 'default' : 'outline'}
+                              className={cn(
+                                 "justify-start h-auto py-4 px-5 border-[#28282b] hover:border-mistral-orange/30 transition-all text-left relative",
+                                 isSelected && "ring-1 ring-mistral-orange/30"
+                              )}
+                              onClick={() => {
+                                const currentValues = Array.isArray(inputValue) ? [...inputValue] : [];
+                                if (isSelected) {
+                                  setInputValue(currentValues.filter(v => v !== opt.value));
+                                } else {
+                                  setInputValue([...currentValues, opt.value]);
+                                }
+                              }}
+                            >
+                              <div className="flex items-center gap-3 w-full">
+                                <div className={cn(
+                                  "w-5 h-5 rounded border flex items-center justify-center transition-colors shrink-0",
+                                  isSelected ? "bg-white border-white" : "border-[#3e3e42] bg-bg-deep"
+                                )}>
+                                  {isSelected && <Check className="w-3.5 h-3.5 text-mistral-orange" />}
+                                </div>
+                                <div className="flex-1 overflow-hidden">
+                                  <div className={cn("font-bold uppercase tracking-tight text-[11px] truncate", isSelected ? "text-white" : "text-text-main")}>
+                                     {opt.label}
+                                  </div>
+                                  {opt.description && <div className="text-[9px] opacity-60 mt-0.5 font-mono leading-tight truncate">{opt.description}</div>}
+                                </div>
+                              </div>
+                            </Button>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 </Card>
               </div>
@@ -180,7 +244,7 @@ export const QAShell: React.FC = () => {
               <Button variant="ghost" className="text-destructive/60 hover:text-white hover:bg-destructive font-mono text-[11px] tracking-widest h-10 px-6" onClick={resetWorkspace}>
                 <Trash2 className="w-3.5 h-3.5 mr-2" /> EMERGENCY_RESET
               </Button>
-              <Button size="lg" onClick={handleNext} disabled={currentQuestion?.required && inputValue === ''} className="font-mono tracking-[0.2em] shadow-lg shadow-mistral-orange/20">
+              <Button size="lg" onClick={handleNext} disabled={currentQuestion?.required && isValueEmpty(inputValue)} className="font-mono tracking-[0.2em] shadow-lg shadow-mistral-orange/20">
                 PROCEED <ArrowRight className="w-3.5 h-3.5 ml-2" />
               </Button>
             </div>

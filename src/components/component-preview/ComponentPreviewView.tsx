@@ -307,18 +307,19 @@ export const ComponentPreviewView: React.FC = () => {
                   Drafting phase will strictly match these sections. Use "User Notes" to preserve specific phrasing or logic.
                 </AlertDescription>
               </Alert>
+
+              <Button size="lg" onClick={approveAndProceed} className="w-full h-12 font-bold tracking-tight shadow-xl shadow-mistral-orange/20 animate-in fade-in slide-in-from-bottom-2 duration-500">
+                PROCEED_TO_GENERATION <Zap className="w-4 h-4 ml-2" />
+              </Button>
             </CardContent>
           </Card>
         </div>
       </div>
 
       {/* Footer Actions */}
-      <footer className="pt-8 border-t border-[#28282b] flex justify-between items-center">
+      <footer className="pt-8 border-t border-[#28282b] flex justify-start items-center">
         <Button variant="ghost" onClick={goBack} className="font-mono text-xs">
           <ArrowLeft className="w-3 h-3 mr-2" /> REVERT_TO_MODEL_CONFIG
-        </Button>
-        <Button size="lg" onClick={approveAndProceed} className="h-12 px-12 font-bold tracking-tight">
-          PROCEED_TO_GENERATION <Zap className="w-4 h-4 ml-2" />
         </Button>
       </footer>
     </div>

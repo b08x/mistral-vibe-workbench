@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useSession } from '../../context/SessionContext';
 import { useWorkspace } from '../../context/WorkspaceContext';
-import { Card, CardContent, CardFooter, CardHeader, CardTitle, Button, Input, Textarea, Select, Progress } from '../ui';
-import { ArrowLeft, ArrowRight, CheckCircle2, ListFilter, Trash2, Settings2, Check } from 'lucide-react';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle, Button, Input, Textarea, Select, Progress, Badge } from '../ui';
+import { ArrowLeft, ArrowRight, CheckCircle2, ListFilter, Trash2, Settings2, Check, Save } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
 export const QAShell: React.FC = () => {
@@ -18,7 +18,7 @@ export const QAShell: React.FC = () => {
         setInputValue(existingAnswer);
       } else {
         // Initialize based on type
-        if (currentQuestion.type === 'multi-select') {
+        if (currentQuestion.type === 'multi-select' || currentQuestion.type === 'list') {
           setInputValue([]);
         } else if (currentQuestion.type === 'boolean') {
           setInputValue(currentQuestion.default_value ?? '');
@@ -190,6 +190,49 @@ export const QAShell: React.FC = () => {
                         </Button>
                       </div>
                     )}
+                    {currentQuestion.type === 'list' && (
+                      <div className="space-y-4">
+                        <div className="flex gap-2">
+                          <Input
+                            placeholder="Type an item and press Enter..."
+                            className="h-12 text-lg"
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                const val = (e.target as HTMLInputElement).value.trim();
+                                if (val) {
+                                  const current = Array.isArray(inputValue) ? [...inputValue] : [];
+                                  if (!current.includes(val)) {
+                                    setInputValue([...current, val]);
+                                    (e.target as HTMLInputElement).value = '';
+                                  }
+                                }
+                                e.preventDefault();
+                              }
+                            }}
+                          />
+                        </div>
+                        <div className="flex flex-wrap gap-2 mt-4 min-h-[40px] p-2 rounded bg-bg-deep/50 border border-[#28282b]/50">
+                          {Array.isArray(inputValue) && inputValue.map((item: string, idx: number) => (
+                            <Badge key={idx} variant="secondary" className="pl-3 pr-1 py-1.5 flex items-center gap-2 bg-bg-surface border-[#28282b] hover:border-mistral-orange/30 transition-colors">
+                              <span className="font-mono text-xs text-[#9cdcfe]">{item}</span>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-5 w-5 hover:bg-destructive hover:text-white rounded-full p-0 transition-colors"
+                                onClick={() => setInputValue(inputValue.filter((_: any, i: number) => i !== idx))}
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </Button>
+                            </Badge>
+                          ))}
+                          {(!Array.isArray(inputValue) || inputValue.length === 0) && (
+                            <div className="text-[11px] font-mono text-text-dim/50 italic flex items-center h-8 ml-2">
+                               No items added yet. Enter items above.
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
                     {currentQuestion.type === 'multi-select' && currentQuestion.config && (
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         {(currentQuestion.config as any).options.map((opt: any) => {
@@ -237,9 +280,31 @@ export const QAShell: React.FC = () => {
           </section>
 
           <footer className="mt-auto py-12 flex justify-between items-center border-t border-[#28282b]">
-            <Button variant="ghost" onClick={goBack} disabled={workspace.session.history.length === 0} className="font-mono text-[11px] tracking-widest h-10 px-6">
-              <ArrowLeft className="w-3.5 h-3.5 mr-2" /> REVERT_STEP
-            </Button>
+            <div className="flex gap-4">
+              <Button variant="ghost" onClick={goBack} disabled={workspace.session.history.length === 0} className="font-mono text-[11px] tracking-widest h-10 px-6">
+                <ArrowLeft className="w-3.5 h-3.5 mr-2" /> REVERT_STEP
+              </Button>
+              <Button 
+                variant="ghost" 
+                onClick={() => {
+                  updateWorkspace({ ...workspace });
+                  const btn = document.getElementById('checkpoint-btn');
+                  if (btn) {
+                    const originalText = btn.innerHTML;
+                    btn.innerHTML = 'CHECKPOINT_SAVED';
+                    btn.classList.add('text-emerald-500');
+                    setTimeout(() => {
+                      btn.innerHTML = originalText;
+                      btn.classList.remove('text-emerald-500');
+                    }, 2000);
+                  }
+                }}
+                id="checkpoint-btn"
+                className="font-mono text-[11px] tracking-widest h-10 px-6 hidden sm:flex items-center"
+              >
+                <Save className="w-3.5 h-3.5 mr-2" /> SAVE_CHECKPOINT
+              </Button>
+            </div>
             <div className="flex gap-4">
               <Button variant="ghost" className="text-destructive/60 hover:text-white hover:bg-destructive font-mono text-[11px] tracking-widest h-10 px-6" onClick={resetWorkspace}>
                 <Trash2 className="w-3.5 h-3.5 mr-2" /> EMERGENCY_RESET

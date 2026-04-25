@@ -19,7 +19,7 @@ export abstract class ModelProvider {
     prompt: GenerationPrompt, 
     modelId: string, 
     apiKey: string,
-    options: { temperature?: number } = {}
+    options: { temperature?: number; maxTokens?: number } = {}
   ): Promise<GenerationResult> {
     const startTime = Date.now();
     const model = this.getModel(modelId, apiKey);
@@ -29,6 +29,7 @@ export abstract class ModelProvider {
       system: prompt.system,
       prompt: prompt.user,
       temperature: options.temperature ?? 0.2,
+      maxTokens: options.maxTokens ?? 4096,
       maxRetries: 5,
     });
 

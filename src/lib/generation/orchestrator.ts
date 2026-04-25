@@ -42,7 +42,11 @@ export class GenerationOrchestrator {
     const { phase_models } = this.workspace.workbench_settings;
 
     // Helper for per-phase generation
-    const runPhase = async (phase: keyof VibeWorkspace['workbench_settings']['phase_models'], prompt: any) => {
+    const runPhase = async (
+      phase: keyof VibeWorkspace['workbench_settings']['phase_models'], 
+      prompt: any, 
+      maxTokens?: number
+    ) => {
       const config = phase_models[phase];
       const provider = this.registry.get(config.provider);
       const apiKey = this.apiKeys[config.provider];
@@ -51,7 +55,10 @@ export class GenerationOrchestrator {
         throw new Error(`Missing provider or API key for phase: ${phase} (Provider: ${config.provider})`);
       }
 
-      return provider.generate(prompt, config.model, apiKey, { temperature: config.temperature });
+      return provider.generate(prompt, config.model, apiKey, { 
+        temperature: config.temperature,
+        maxTokens: maxTokens || 2048 // Robust default for configs
+      });
     };
 
     // 1. PHASE: CONTEXT_GATHERING
@@ -59,11 +66,20 @@ export class GenerationOrchestrator {
     const contextGatheringPrompt = this.getPrompt('context_gathering');
     
     // Using structured output enforcement (TASK-2.1)
-    const contextResult = await runPhase('context_gathering', contextGatheringPrompt);
+    // Context gathering is always expected to be small JSON, 1024 is plenty.
+    const contextResult = await runPhase('context_gathering', contextGatheringPrompt, 1024);
     
     try {
-      // Clean potential JSON markdown blocks
-      const jsonStr = contextResult.content.replace(/^```json\n?/, '').replace(/\n?```$/, '').trim();
+      // Robust JSON extraction: Find first '{' and last '}'
+      const content = contextResult.content;
+      const start = content.indexOf('{');
+      const end = content.lastIndexOf('}');
+      
+      if (start === -1 || end === -1 || end < start) {
+        throw new Error('No valid JSON object found in response');
+      }
+
+      const jsonStr = content.substring(start, end + 1);
       this.workspace.generation.contextMap = JSON.parse(jsonStr);
     } catch (e) {
       console.warn('[ORCHESTRATOR] Failed to parse strict JSON for context_gathering, falling back to raw', e);

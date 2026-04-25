@@ -38,7 +38,7 @@ export class GenerationOrchestrator {
     this.controller = new UGCSController(workspace.meta.entityType);
   }
 
-  async generate(): Promise<VibeWorkspace> {
+  async generate(targetPhase?: 'drafting' | 'review'): Promise<VibeWorkspace> {
     const { phase_models } = this.workspace.workbench_settings;
 
     // Helper for per-phase generation
@@ -61,70 +61,81 @@ export class GenerationOrchestrator {
       });
     };
 
-    // 1. PHASE: CONTEXT_GATHERING
-    this.workspace.generation.currentPhase = 'context_gathering';
-    const contextGatheringPrompt = this.getPrompt('context_gathering');
-    
-    // Using structured output enforcement (TASK-2.1)
-    // Context gathering is always expected to be small JSON, 1024 is plenty.
-    const contextResult = await runPhase('context_gathering', contextGatheringPrompt, 1024);
-    
-    try {
-      // Robust JSON extraction: Find first '{' and last '}'
-      const content = contextResult.content;
-      const start = content.indexOf('{');
-      const end = content.lastIndexOf('}');
+    // If we are starting from scratch or target is drafting
+    if (!targetPhase || targetPhase === 'drafting') {
+      // 1. PHASE: CONTEXT_GATHERING
+      this.workspace.generation.currentPhase = 'context_gathering';
+      const contextGatheringPrompt = this.getPrompt('context_gathering');
       
-      if (start === -1 || end === -1 || end < start) {
-        throw new Error('No valid JSON object found in response');
+      const contextResult = await runPhase('context_gathering', contextGatheringPrompt, 1024);
+      
+      try {
+        const content = contextResult.content;
+        const start = content.indexOf('{');
+        const end = content.lastIndexOf('}');
+        
+        if (start === -1 || end === -1 || end < start) {
+          throw new Error('No valid JSON object found in response');
+        }
+
+        const jsonStr = content.substring(start, end + 1);
+        this.workspace.generation.contextMap = JSON.parse(jsonStr);
+      } catch (e) {
+        console.warn('[ORCHESTRATOR] Failed to parse strict JSON for context_gathering, falling back to raw', e);
+        this.workspace.generation.contextMap = { raw: contextResult.content };
       }
 
-      const jsonStr = content.substring(start, end + 1);
-      this.workspace.generation.contextMap = JSON.parse(jsonStr);
-    } catch (e) {
-      console.warn('[ORCHESTRATOR] Failed to parse strict JSON for context_gathering, falling back to raw', e);
-      this.workspace.generation.contextMap = { raw: contextResult.content };
-    }
-
-    // 2. PHASE: DRAFTING
-    this.workspace.generation.currentPhase = 'drafting';
-    
-    // Inject component preview constraints if approved
-    const approvedPreview = this.workspace.artifacts.componentPreview;
-    if (approvedPreview?.userApproved) {
-      const sectionConstraints = approvedPreview.sections
-        .sort((a, b) => a.order - b.order)
-        .map(s => {
-          const note = s.userNotes ? ` [User note: ${s.userNotes}]` : '';
-          return `${s.label}: ${s.description}${note}`;
-        })
-        .join('\n');
+      // 2. PHASE: DRAFTING
+      this.workspace.generation.currentPhase = 'drafting';
       
-      this.workspace.generation.skeletonConstraints = sectionConstraints;
+      // Inject component preview constraints if approved
+      const approvedPreview = this.workspace.artifacts.componentPreview;
+      if (approvedPreview?.userApproved) {
+        const sectionConstraints = approvedPreview.sections
+          .sort((a, b) => a.order - b.order)
+          .map(s => {
+            const note = s.userNotes ? ` [User note: ${s.userNotes}]` : '';
+            return `${s.label}: ${s.description}${note}`;
+          })
+          .join('\n');
+        
+        this.workspace.generation.skeletonConstraints = sectionConstraints;
+      }
+
+      const draftingPrompt = this.getPrompt('drafting');
+      const draftResult = await runPhase('drafting', draftingPrompt);
+      this.workspace.generation.draftArtifact = draftResult.content;
+      
+      // If target was specifically drafting, we stop here
+      if (targetPhase === 'drafting') {
+        return this.workspace;
+      }
     }
 
-    const draftingPrompt = this.getPrompt('drafting');
-    const draftResult = await runPhase('drafting', draftingPrompt);
-    this.workspace.generation.draftArtifact = draftResult.content;
+    // 3. PHASE: REVIEW (Compliance Audit)
+    if (targetPhase === 'review' || !targetPhase) {
+      if (!this.workspace.generation.draftArtifact) {
+        throw new Error('Cannot run review phase: No draft artifact found in workspace');
+      }
 
-    // 3. PHASE: REVIEW
-    this.workspace.generation.currentPhase = 'review';
-    const reviewPrompt = this.getPrompt('review', draftResult.content);
-    const finalResult = await runPhase('review', reviewPrompt);
-    
-    // Finalize workspace
-    this.workspace.artifacts.generatedContent = finalResult.content;
-    this.workspace.artifacts.model = phase_models.drafting.model; 
-    this.workspace.artifacts.provider = phase_models.drafting.provider;
-    this.workspace.artifacts.phase_models_used = { ...phase_models };
-    this.workspace.artifacts.tokensUsed = finalResult.tokens_used; 
-    this.workspace.artifacts.generationTime = finalResult.generation_time;
-    this.workspace.meta.generatedAt = new Date();
-    this.workspace.generation.currentPhase = null;
+      this.workspace.generation.currentPhase = 'review';
+      const reviewPrompt = this.getPrompt('review', this.workspace.generation.draftArtifact);
+      const finalResult = await runPhase('review', reviewPrompt);
+      
+      // Finalize workspace
+      this.workspace.artifacts.generatedContent = finalResult.content;
+      this.workspace.artifacts.model = phase_models.drafting.model; 
+      this.workspace.artifacts.provider = phase_models.drafting.provider;
+      this.workspace.artifacts.phase_models_used = { ...phase_models };
+      this.workspace.artifacts.tokensUsed = finalResult.tokens_used; 
+      this.workspace.artifacts.generationTime = finalResult.generation_time;
+      this.workspace.meta.generatedAt = new Date();
+      this.workspace.generation.currentPhase = null;
 
-    // Detect failure modes and report compliance
-    this.workspace.generation.failureModeDetected = this.controller.detectFailureModes(finalResult.content);
-    this.workspace.generation.dimensionCompliance = this.calculateCompliance(finalResult.content);
+      // Detect failure modes and report compliance
+      this.workspace.generation.failureModeDetected = this.controller.detectFailureModes(finalResult.content);
+      this.workspace.generation.dimensionCompliance = this.calculateCompliance(finalResult.content);
+    }
 
     return this.workspace;
   }

@@ -65,11 +65,11 @@ async function startServer() {
   // Secure Generation Proxy (TASK-1.3)
   app.post('/api/generate/artifact', async (req, res) => {
     try {
-      const { workspace } = req.body;
+      const { workspace, targetPhase } = req.body;
       if (!workspace) return res.status(400).json({ error: 'Missing workspace state' });
 
       const orchestrator = new GenerationOrchestrator(workspace, getServerKeys());
-      const updatedWorkspace = await orchestrator.generate();
+      const updatedWorkspace = await orchestrator.generate(targetPhase);
       
       res.json(updatedWorkspace);
     } catch (error: any) {

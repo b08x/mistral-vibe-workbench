@@ -114,6 +114,63 @@ export class MistralProvider extends ModelProvider {
   }
 }
 
+export class OpenAIProvider extends ModelProvider {
+  id = 'openai';
+  name = 'OpenAI';
+  supportsDirectBrowser = false;
+
+  getModel(modelId: string, apiKey: string) {
+    const client = createOpenAI({ apiKey });
+    return client(modelId);
+  }
+
+  listModels(): ModelInfo[] {
+    return [
+      { id: 'gpt-4o', name: 'GPT-4o', context_window: 128000, supports_streaming: true, supports_json_mode: true },
+      { id: 'gpt-4o-mini', name: 'GPT-4o Mini', context_window: 128000, supports_streaming: true, supports_json_mode: true },
+    ];
+  }
+
+  async fetchAvailableModels(apiKey: string): Promise<ModelInfo[]> {
+    const res = await fetch('https://api.openai.com/v1/models', {
+      headers: { 'Authorization': `Bearer ${apiKey}` }
+    });
+    if (!res.ok) throw new Error(`OpenAI API error: ${res.status}`);
+    const data = await res.json();
+    return data.data.map((m: any) => ({
+      id: m.id,
+      name: m.id,
+      context_window: m.context_window ?? 128000,
+      supports_streaming: true,
+      supports_json_mode: true
+    }));
+  }
+}
+
+export class GoogleProvider extends ModelProvider {
+  id = 'google';
+  name = 'Google (Gemini)';
+  supportsDirectBrowser = false;
+
+  getModel(modelId: string, apiKey: string) {
+    // Note: Google uses global config or per-call config.
+    // With AI SDK, we can pass apiKey if needed but usually it's in env
+    return google(modelId);
+  }
+
+  listModels(): ModelInfo[] {
+    return [
+      { id: 'gemini-1.5-pro-latest', name: 'Gemini 1.5 Pro', context_window: 1000000, supports_streaming: true, supports_json_mode: true },
+      { id: 'gemini-1.5-flash-latest', name: 'Gemini 1.5 Flash', context_window: 1000000, supports_streaming: true, supports_json_mode: true },
+    ];
+  }
+
+  async fetchAvailableModels(apiKey: string): Promise<ModelInfo[]> {
+    // Gemini API doesn't have a simple standard model list endpoint like OpenAI yet
+    return this.listModels();
+  }
+}
+
 export class OpenRouterProvider extends ModelProvider {
   id = 'openrouter';
   name = 'OpenRouter';
@@ -161,6 +218,8 @@ export class ProviderRegistry {
   private constructor() {
     this.register(new AnthropicProvider());
     this.register(new MistralProvider());
+    this.register(new OpenAIProvider());
+    this.register(new GoogleProvider());
     this.register(new OpenRouterProvider());
   }
 

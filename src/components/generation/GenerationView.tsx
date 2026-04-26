@@ -102,6 +102,9 @@ export const GenerationView: React.FC = () => {
   const getPhaseStatus = (phase: string) => {
     if (isAuditing && phase === 'review') return 'active';
     
+    const isWaitingForAudit = workspace.generation.currentPhase === 'drafting' && workspace.generation.draftArtifact !== null;
+    if (isWaitingForAudit && phase === 'review') return 'active';
+
     if (workspace.generation.currentPhase === phase) {
       if (phase === 'drafting' && workspace.generation.draftArtifact) return 'complete';
       return 'active';
@@ -115,7 +118,7 @@ export const GenerationView: React.FC = () => {
     if (currentIdx === -1) return 'pending';
     
     // If we are in drafting phase but draft is done, treat it as currentIdx being 1.5
-    const effectiveCurrentIdx = (workspace.generation.currentPhase === 'drafting' && workspace.generation.draftArtifact) ? 1.5 : currentIdx;
+    const effectiveCurrentIdx = isWaitingForAudit ? 1.5 : currentIdx;
 
     return phaseIdx < effectiveCurrentIdx ? 'complete' : 'pending';
   };
